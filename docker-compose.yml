@@ -1,0 +1,62 @@
+version: '3.5'
+
+services:
+    webserver:
+        image: "nginx:mainline-alpine"
+        container_name: webserver
+        restart: unless-stopped
+        ports:
+            - "80:80"
+        volumes:
+            - ./client:/usr/share/nginx/html
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+        depends_on:
+            - app
+        networks:
+            app-network:
+                ipv4_address: 10.5.0.8
+
+    redis:
+        container_name: redis_container
+        restart: unless-stopped
+        image: "redis:alpine"
+        networks: 
+            app-network:
+                ipv4_address: 10.5.0.7
+
+    postgres:
+        container_name: postgres_container
+        image: "postgres:alpine"
+        environment:
+            POSTGRES_USER: "${DB_USER}"
+            POSTGRES_PASSWORD: "${DB_PASSWORD}"
+            POSTGRES_DB: "${DB_NAME}"
+            PGDATA: /data/postgres
+        volumes:
+            - postgres:/data/postgres
+        restart: unless-stopped
+        networks: 
+            app-network:
+                ipv4_address: 10.5.0.6
+
+    app:
+        container_name: app_container
+        build: .
+        restart: unless-stopped
+        env_file: .env
+        depends_on:
+            - postgres
+            - redis
+        networks: 
+            app-network:
+                ipv4_address: 10.5.0.5
+
+volumes:
+    postgres:
+
+networks: 
+    app-network:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 10.5.0.0/16
